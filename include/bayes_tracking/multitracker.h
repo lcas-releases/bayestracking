@@ -40,13 +40,14 @@ struct observation_t {
 
 typedef std::vector<observation_t> sequence_t;
 typedef enum {NN, NN_LABELED, NNJPDA, NNJPDA_LABELED} association_t;
+typedef enum {CARTESIAN, POLAR} observ_model_t;
 
 // to be defined by user
 template<class FilterType>
-extern bool isLost(const FilterType* filter);
+extern bool isLost(const FilterType* filter, double stdLimit = 1.0);
 
 template<class FilterType>
-extern bool initialize(FilterType* &filter, sequence_t& obsvSeq);
+extern bool initialize(FilterType* &filter, sequence_t& obsvSeq, observ_model_t om_flag = CARTESIAN);
 
 /**
 	@author Nicola Bellotto <nick@robots.ox.ac.uk>
@@ -154,19 +155,23 @@ public:
   /**
    * Perform data association and update step for all the current filters, create new ones and remove those which are no more necessary
    * @param om Observation model
+   * @param om_flag Observation model flag (CARTESIAN or POLAR)
    * @param alg Data association algorithm (NN, NN_LABELED, NNJPDA, NN_LABELED)
+   * @param seqSize Minimum number of observations necessary for new track creation
+   * @param seqTime Minimum interval between observations for new track creation
+   * @param stdLimit Upper limit for the standard deviation of the estimated position
    */
   template<class ObservationModelType>
-  void process(ObservationModelType& om, association_t alg = NN, unsigned int seqSize = 5, double seqTime = 0.2)
+  void process(ObservationModelType& om, association_t alg = NN, unsigned int seqSize = 5, double seqTime = 0.2, double stdLimit = 1.0, observ_model_t om_flag = CARTESIAN)
   {
     // data association
     if (dataAssociation(om, alg)) {
       // update
       observe(om);
     }
-    pruneTracks();
+    pruneTracks(stdLimit);
     if (m_observations.size())
-      createTracks(om, seqSize, seqTime);
+      createTracks(om, seqSize, seqTime, om_flag);
     // finished
     cleanup();
   }
@@ -217,7 +222,7 @@ void addFilter(FilterType* filter, observation_t& observation)
     if (N != 0) { // observations and tracks, associate
 	  jpda::JPDA* jpda;
 	  vector< size_t > znum;  // this would contain the number of observations for each sensor
-	  if (alg == NNJPDA || NNJPDA_LABELED) {    /// NNJPDA data association (one sensor)
+	  if (alg == NNJPDA || alg == NNJPDA_LABELED) {    /// NNJPDA data association (one sensor)
 		znum.push_back(M);      // only one in this case
 		jpda = new jpda::JPDA(znum, N);
 	  }
@@ -232,7 +237,7 @@ void addFilter(FilterType* filter, observation_t& observation)
         for (int i = 0; i < M; i++) {
 
          // Only Check NN_LABELED, NNJPDA_LABELED tag associate not yet implemented
-         if (alg == NN_LABELED || NNJPDA_LABELED) 
+         if (alg == NN_LABELED || alg == NNJPDA_LABELED) 
          {
            // Assign maximum cost if observations and trajectories labelled do not match
            if (m_observations[i].tag != m_filters[j].tag) 
@@ -249,7 +254,7 @@ void addFilter(FilterType* filter, observation_t& observation)
             }
             else {
               amat[i][j] = AM::correlation_log(s, S);
-              if (alg == NNJPDA || NNJPDA_LABELED) 
+              if (alg == NNJPDA || alg == NNJPDA_LABELED) 
               {
                 jpda->Omega[0][i][j+1] = true;
                 jpda->Lambda[0][i][j+1] = jpda::logGauss(s, S);
@@ -272,7 +277,7 @@ void addFilter(FilterType* filter, observation_t& observation)
             m_assignments.insert(std::make_pair(amat.NN[n].row, amat.NN[n].col));
         }
       }
-      else if (alg == NNJPDA || NNJPDA_LABELED) { /// NNJPDA data association (one sensor)
+      else if (alg == NNJPDA || alg == NNJPDA_LABELED) { /// NNJPDA data association (one sensor)
         // compute associations
         jpda->getAssociations();
         jpda->getProbabilities();
@@ -306,12 +311,12 @@ void addFilter(FilterType* filter, observation_t& observation)
   }
 
 
-  void pruneTracks()
+  void pruneTracks(double stdLimit = 1.0)
   {
     // remove lost tracks
     typename std::vector<filter_t>::iterator fi = m_filters.begin(), fiEnd = m_filters.end();
     while (fi != fiEnd) {
-      if (isLost(fi->filter)) {
+      if (isLost(fi->filter, stdLimit)) {
         delete fi->filter;
         fi = m_filters.erase(fi);
         fiEnd = m_filters.end();
@@ -322,9 +327,10 @@ void addFilter(FilterType* filter, observation_t& observation)
     }
   }
 
-
+    // seqSize = Minimum number of unmatched observations to create new track hypothesis
+    // seqTime = Maximum time interval between these observations
   template<class ObservationModelType>
-  void createTracks(ObservationModelType& om, unsigned int seqSize, double seqTime)
+  void createTracks(ObservationModelType& om, unsigned int seqSize, double seqTime, observ_model_t om_flag)
   {
     // create new tracks from unmatched observations
     std::vector<size_t>::iterator ui = m_unmatched.begin();
@@ -339,8 +345,8 @@ void addFilter(FilterType* filter, observation_t& observation)
           // add new track
           si->push_back(m_observations[*ui]);
           FilterType* filter;
-          if (si->size() >= seqSize && initialize(filter, *si)) {  // there's a minimum number of sequential observations
-            addFilter(filter, m_observations[*ui]);
+          if (si->size() >= seqSize && initialize(filter, *si, om_flag)) {  // there's a minimum number of sequential observations
+            addFilter(filter);
             // remove sequence
             si = m_sequences.erase(si);
             matched = true;
@@ -369,6 +375,7 @@ void addFilter(FilterType* filter, observation_t& observation)
       s.push_back(m_observations[*ui]);
       m_sequences.push_back(s);
     }
+    // reset vector of (indexes of) unmatched observations
     m_unmatched.clear();
   }
   
