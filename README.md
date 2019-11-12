@@ -1,3 +1,26 @@
+## bayes_tracking (melodic) - 1.4.0-1
+
+The packages in the `bayes_tracking` repository were released into the `melodic` distro by running `/usr/bin/bloom-release -n -t melodic -r melodic bayes_tracking` on `Tue, 12 Nov 2019 20:30:30 -0000`
+
+The `bayes_tracking` package was released.
+
+Version of package(s) in repository `bayes_tracking`:
+
+- upstream repository: https://github.com/LCAS/bayestracking.git
+- release repository: unknown
+- rosdistro version: `null`
+- old version: `null`
+- new version: `1.4.0-1`
+
+Versions of tools used:
+
+- bloom version: `0.9.0`
+- catkin_pkg version: `0.4.14`
+- rosdep version: `0.17.1`
+- rosdistro version: `0.7.5`
+- vcstools version: `0.1.42`
+
+
 ## bayes_tracking (kinetic) - 1.4.0-0
 
 The packages in the `bayes_tracking` repository were released into the `kinetic` distro by running `/usr/bin/bloom-release -y --no-web -t kinetic -r kinetic bayes_tracking` on `Mon, 01 Oct 2018 11:04:55 -0000`
