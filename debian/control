@@ -1,0 +1,13 @@
+Source: ros-melodic-bayes-tracking
+Section: misc
+Priority: optional
+Maintainer: Christian Dondrup <cdondrup@lincoln.ac.uk>
+Build-Depends: debhelper (>= 9.0.0), libblas-dev, libboost-all-dev, ros-melodic-catkin, ros-melodic-cv-bridge, ros-melodic-roscpp
+Homepage: 
+Standards-Version: 3.9.2
+
+Package: ros-melodic-bayes-tracking
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libblas-dev, libboost-all-dev, ros-melodic-cv-bridge
+Description: The bayestracking package uses extended or unscented Kalman filters to track movement.
+ The constant velocity model has been designed to track the movement of people in cartesian space in particular.
